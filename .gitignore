@@ -1,0 +1,9 @@
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node modules (if added later)
+node_modules/
