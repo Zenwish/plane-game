@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>飞机大战升级</title>
+  <title>飞机大战标准版</title>
   <style>
     html, body {
       margin: 0;
@@ -27,11 +27,17 @@
       left: 50%;
       transform: translateX(-50%);
       color: #fff;
-      font-size: 18px;
+      font-size: 15px;
       user-select: none;
       pointer-events: none;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       z-index: 10;
+      text-align: center;
+      width: min(95vw, 760px);
+    }
+    #hud .sep {
+      opacity: 0.5;
+      margin: 0 8px;
     }
     #controls {
       position: fixed;
@@ -59,11 +65,32 @@
       top: 82px;
       left: 50%;
       transform: translateX(-50%);
-      color: #999;
+      color: #bbb;
       font-size: 14px;
       user-select: none;
       pointer-events: none;
       z-index: 10;
+      white-space: nowrap;
+    }
+    #bossBarWrap {
+      position: fixed;
+      top: 108px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(440px, 90vw);
+      height: 16px;
+      border: 1px solid #623;
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(60, 0, 0, 0.55);
+      z-index: 12;
+      display: none;
+    }
+    #bossBarFill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff7953, #ff205f);
+      transition: width 0.15s linear;
     }
     #gameOverText {
       position: fixed;
@@ -75,6 +102,7 @@
       display: none;
       user-select: none;
       z-index: 12;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
     }
     #gameOverText h1 {
       margin: 0 0 10px;
@@ -83,12 +111,15 @@
     #gameOverText p {
       margin: 0;
       font-size: 18px;
-      opacity: 0.9;
+      opacity: 0.95;
     }
     #startScreen {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(10,10,16,0.95);
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 10, 16, 0.95);
       z-index: 100;
       display: flex;
       flex-direction: column;
@@ -99,6 +130,8 @@
       letter-spacing: 2px;
       user-select: none;
       text-align: center;
+      padding: 0 16px;
+      box-sizing: border-box;
     }
     #startScreen h1 {
       font-size: 48px;
@@ -111,7 +144,7 @@
       border: none;
       font-size: 20px;
       padding: 12px 36px;
-      margin-top: 32px;
+      margin-top: 24px;
       border-radius: 5px;
       cursor: pointer;
       outline: none;
@@ -120,10 +153,29 @@
     #startScreen button:hover {
       background: #3ae2ff;
     }
+    #difficultyGroup {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+    .difficultyItem {
+      border: 1px solid #3e4a5b;
+      border-radius: 16px;
+      padding: 6px 10px;
+      cursor: pointer;
+      background: #171d28;
+    }
+    .difficultyItem input {
+      margin-right: 4px;
+    }
     #credit {
       color: #aaa;
       font-size: 13px;
-      margin-top: 32px;
+      margin-top: 24px;
       letter-spacing: 1px;
     }
   </style>
@@ -131,46 +183,58 @@
 <body>
   <div id="startScreen">
     <h1>飞机大战</h1>
-    <div style="font-size:18px;">
-      鼠标或手指控制飞机位置<br>
-      自动射击和自动刷怪<br>
-      避免碰到敌人，分数+10/击落一只<br>
+    <div style="font-size:18px; line-height:1.6;">
+      鼠标或手指控制飞机，自动射击<br>
+      Space 释放炸弹（清屏并伤害BOSS）<br>
+      5关推进，最终BOSS三阶段<br>
       <br>
-      <b>纯前端无素材小游戏</b>
+      <b>标准版单文件无外部素材依赖</b>
+    </div>
+    <div id="difficultyGroup">
+      <label class="difficultyItem"><input type="radio" name="difficulty" value="easy">简单</label>
+      <label class="difficultyItem"><input type="radio" name="difficulty" value="normal" checked>普通</label>
+      <label class="difficultyItem"><input type="radio" name="difficulty" value="hard">困难</label>
     </div>
     <button id="realStartBtn">开始游戏</button>
     <div id="credit">by GPT Rewriter</div>
   </div>
-  <div id="hud">分数：<span id="score">0</span></div>
+
+  <div id="hud">
+    分数：<span id="score">0</span>
+    <span class="sep">|</span>关卡：<span id="level">1</span>
+    <span class="sep">|</span>难度：<span id="difficultyText">普通</span>
+    <span class="sep">|</span>炸弹CD：<span id="bombCd">就绪</span>
+    <span class="sep">|</span>火力：<span id="powerLevel">1</span>
+  </div>
   <div id="controls">
     <button id="startBtn" disabled>开始游戏</button>
     <button id="pauseBtn" disabled>暂停</button>
   </div>
-  <div id="statusText">点击“开始游戏”后开始刷怪与自动射击</div>
+  <div id="statusText">请选择难度并开始游戏</div>
+  <div id="bossBarWrap"><div id="bossBarFill"></div></div>
   <canvas id="gameCanvas"></canvas>
   <div id="gameOverText">
     <h1>游戏结束</h1>
     <p>按 R 键重新开始</p>
   </div>
-  <!-- 音效资源 -->
-  <audio id="shootAudio" src="https://cdn.jsdelivr.net/gh/sentsin/static@main/shoot.wav"></audio>
-  <audio id="explosionAudio" src="https://cdn.jsdelivr.net/gh/sentsin/static@main/explosion.wav"></audio>
-  <audio id="bgmAudio" src="https://cdn.jsdelivr.net/gh/sentsin/static@main/bg1.ogg" loop></audio>
+
   <script>
-    // ------------ 基础DOM绑定 ------------
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
+    const levelEl = document.getElementById("level");
+    const difficultyEl = document.getElementById("difficultyText");
+    const bombCdEl = document.getElementById("bombCd");
+    const powerLevelEl = document.getElementById("powerLevel");
     const gameOverText = document.getElementById("gameOverText");
     const startBtn = document.getElementById("startBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const statusText = document.getElementById("statusText");
     const startScreen = document.getElementById("startScreen");
     const realStartBtn = document.getElementById("realStartBtn");
-    // 音效
-    const shootAudio = document.getElementById("shootAudio");
-    const explosionAudio = document.getElementById("explosionAudio");
-    const bgmAudio = document.getElementById("bgmAudio");
+    const bossBarWrap = document.getElementById("bossBarWrap");
+    const bossBarFill = document.getElementById("bossBarFill");
+    const difficultyInputs = Array.from(document.querySelectorAll("input[name='difficulty']"));
 
     function resizeCanvas() {
       canvas.width = Math.min(window.innerWidth, 480);
@@ -179,32 +243,144 @@
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    // ------------ 游戏数据结构 ------------
-    const player = {
-      width: 36,
-      height: 24,
-      x: 0,
-      y: 0,
-      speedFollow: 0.25
+    const Config = {
+      game: {
+        shootIntervalMs: 90,
+        levelTransitionMs: 1500,
+        bombCooldownMs: 10000
+      },
+      powerShot: {
+        normal: [80, 220],
+        easy: [70, 180],
+        hard: [100, 280]
+      },
+      difficulty: {
+        easy: {
+          label: "简单",
+          enemySpawnMul: 1.15,
+          enemySpeedMul: 0.86,
+          enemyHpMul: 0.9,
+          bossHpMul: 0.85,
+          bossAttackMul: 1.18,
+          bombCooldownMul: 0.85,
+          scoreMul: 0.9
+        },
+        normal: {
+          label: "普通",
+          enemySpawnMul: 1,
+          enemySpeedMul: 1,
+          enemyHpMul: 1,
+          bossHpMul: 1,
+          bossAttackMul: 1,
+          bombCooldownMul: 1,
+          scoreMul: 1
+        },
+        hard: {
+          label: "困难",
+          enemySpawnMul: 0.82,
+          enemySpeedMul: 1.18,
+          enemyHpMul: 1.25,
+          bossHpMul: 1.25,
+          bossAttackMul: 0.78,
+          bombCooldownMul: 1.2,
+          scoreMul: 1.3
+        }
+      },
+      levels: [
+        { killTarget: 12, surviveMs: 14000, spawnMs: 760, speedMin: 1.9, speedMax: 2.6, hp: 1, eliteChance: 0.0, patterns: ["basic"] },
+        { killTarget: 24, surviveMs: 21000, spawnMs: 620, speedMin: 2.4, speedMax: 3.3, hp: 1, eliteChance: 0.08, patterns: ["basic", "fast"] },
+        { killTarget: 38, surviveMs: 26000, spawnMs: 500, speedMin: 2.6, speedMax: 3.6, hp: 1, eliteChance: 0.12, patterns: ["basic", "fast", "zigzag"] },
+        { killTarget: 56, surviveMs: 32000, spawnMs: 420, speedMin: 2.9, speedMax: 4.0, hp: 2, eliteChance: 0.25, patterns: ["basic", "fast", "zigzag"] },
+        { killTarget: 80, surviveMs: 38000, spawnMs: 340, speedMin: 3.2, speedMax: 4.4, hp: 2, eliteChance: 0.32, patterns: ["basic", "fast", "zigzag"] }
+      ],
+      boss: {
+        width: 170,
+        height: 110,
+        baseHp: 1500,
+        enterSpeed: 1.6,
+        phaseThresholds: [0.7, 0.35],
+        bombDamage: 150
+      }
     };
-    const mouse = {
-      x: canvas.width / 2,
-      y: canvas.height - 80
-    };
-    let bullets = [];
-    let enemies = [];
-    let explosions = [];
-    let score = 0;
-    let gameOver = false;
-    let started = false;
-    let paused = false;
-    let lastShootTime = 0;
-    let lastEnemySpawnTime = 0;
 
-    const SHOOT_INTERVAL = 90; // 子弹更快，发射间隔减少
-    const ENEMY_SPAWN_INTERVAL = 320; // 敌机更密集，刷怪间隔减少
+    const GameState = {
+      mode: "menu",
+      difficulty: "normal",
+      score: 0,
+      levelIndex: 0,
+      levelStartedAt: 0,
+      levelKills: 0,
+      levelTransitionUntil: 0,
+      bossSpawned: false,
+      bossDefeated: false
+    };
+
+    const Entities = {
+      player: { width: 42, height: 34, x: 0, y: 0, speedFollow: 0.22 },
+      mouse: { x: canvas.width / 2, y: canvas.height - 80 },
+      bullets: [],
+      enemies: [],
+      bossBullets: [],
+      explosions: [],
+      boss: null
+    };
+
+    const Systems = {
+      spawner: { lastEnemySpawnAt: 0 },
+      shooter: { lastShotAt: 0 },
+      skills: { bombLastUsedAt: -Infinity, powerLevel: 1 },
+      boss: { phase: 1, directionX: 1, lastAttackAt: 0, summonLastAt: 0 }
+    };
+
+    const Assets = { sprites: {}, loaded: false };
+
+    function svgSprite(svg) {
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }
+
+    function createSpriteLibrary() {
+      return {
+        player: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='84' height='68' viewBox='0 0 84 68'><polygon points='42,4 8,58 76,58' fill='white' stroke='#a4f0ff' stroke-width='3'/><polygon points='42,14 30,42 54,42' fill='#49bcfa'/><rect x='28' y='50' width='28' height='10' rx='5' fill='#2a7bbf'/></svg>`),
+        enemyA: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><path d='M32 6L56 26L47 58H17L8 26Z' fill='#da2b2b' stroke='#ffb0a5' stroke-width='3'/><circle cx='32' cy='30' r='8' fill='#ffd7d2'/></svg>`),
+        enemyB: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><path d='M32 6L58 32L32 58L6 32Z' fill='#b7142e' stroke='#ffc9d2' stroke-width='3'/><path d='M20 36h24' stroke='#fff' stroke-width='4'/></svg>`),
+        elite: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'><path d='M36 6L64 22L56 60H16L8 22Z' fill='#881230' stroke='#ffd4de' stroke-width='3'/><circle cx='36' cy='34' r='10' fill='#ffe9ef'/><circle cx='36' cy='34' r='4' fill='#ff4a66'/></svg>`),
+        boss: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='220' height='140' viewBox='0 0 220 140'><path d='M12 50L70 16H150L208 50L184 126H36Z' fill='#4f1024' stroke='#ffc8d8' stroke-width='4'/><rect x='76' y='44' width='68' height='34' rx='6' fill='#ffd7e2'/><circle cx='52' cy='74' r='10' fill='#ff5a74'/><circle cx='168' cy='74' r='10' fill='#ff5a74'/></svg>`),
+        bullet: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='12' height='28' viewBox='0 0 12 28'><rect x='4' y='2' width='4' height='24' rx='2' fill='#4bdcff'/><rect x='3' y='0' width='6' height='8' rx='2' fill='#d6faff'/></svg>`),
+        bossBullet: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='18' height='24' viewBox='0 0 18 24'><ellipse cx='9' cy='12' rx='7' ry='10' fill='#ff5b72'/><ellipse cx='9' cy='12' rx='3' ry='5' fill='#ffd1da'/></svg>`)
+      };
+    }
+
+    function loadSprites() {
+      const defs = createSpriteLibrary();
+      const entries = Object.entries(defs);
+      let loaded = 0;
+      entries.forEach(([key, src]) => {
+        const img = new Image();
+        img.onload = () => {
+          loaded += 1;
+          if (loaded === entries.length) {
+            Assets.loaded = true;
+          }
+        };
+        img.onerror = () => {
+          loaded += 1;
+        };
+        img.src = src;
+        Assets.sprites[key] = img;
+      });
+    }
+
+    function difficultyConfig() {
+      return Config.difficulty[GameState.difficulty];
+    }
+
+    function currentLevelConfig() {
+      return Config.levels[Math.min(GameState.levelIndex, Config.levels.length - 1)];
+    }
 
     function resetPlayerPosition() {
+      const player = Entities.player;
+      const mouse = Entities.mouse;
       player.x = canvas.width / 2 - player.width / 2;
       player.y = canvas.height - player.height - 24;
       mouse.x = player.x + player.width / 2;
@@ -212,336 +388,564 @@
     }
     resetPlayerPosition();
 
-    // ------------ 交互事件 ------------
-    canvas.addEventListener("mousemove", (e) => {
-      if (!started || paused) return;
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
-    });
-    canvas.addEventListener("touchmove", (e) => {
-      if (!started || paused) return;
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      mouse.x = touch.clientX - rect.left;
-      mouse.y = touch.clientY - rect.top;
-    }, { passive: false });
+    function addScore(base) {
+      const gain = Math.round(base * difficultyConfig().scoreMul);
+      GameState.score += gain;
+      scoreEl.textContent = String(GameState.score);
+      const milestones = Config.powerShot[GameState.difficulty];
+      Systems.skills.powerLevel = GameState.score >= milestones[1] ? 3 : GameState.score >= milestones[0] ? 2 : 1;
+      powerLevelEl.textContent = String(Systems.skills.powerLevel);
+    }
 
-    window.addEventListener("keydown", (e) => {
-      if ((e.key === "r" || e.key === "R") && gameOver) {
-        restartGame();
+    function createExplosion(x, y, isBig = false) {
+      Entities.explosions.push({
+        x,
+        y,
+        radius: isBig ? 38 : 20,
+        color: isBig ? ["#fff", "#fd0", "#fa0", "#f33"] : ["#fff", "#ff0", "#f60", "#f00"],
+        frame: 0,
+        maxFrame: isBig ? 24 : 16
+      });
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+
+    function shoot(now) {
+      const player = Entities.player;
+      const centerX = player.x + player.width / 2;
+      const level = Systems.skills.powerLevel;
+      const offsets = level === 1 ? [0] : level === 2 ? [-10, 10] : [-15, 0, 15];
+      offsets.forEach((offset) => {
+        Entities.bullets.push({
+          x: centerX + offset - 3,
+          y: player.y - 14,
+          width: 6,
+          height: 18,
+          speed: 10.5,
+          damage: 1
+        });
+      });
+      Systems.shooter.lastShotAt = now;
+    }
+
+    function spawnEnemy(now) {
+      const level = currentLevelConfig();
+      const diff = difficultyConfig();
+      const isElite = Math.random() < level.eliteChance;
+      const width = isElite ? 42 : 32;
+      const height = isElite ? 42 : 32;
+      const x = Math.random() * (canvas.width - width);
+      const hp = Math.max(1, Math.round(level.hp * (isElite ? 2 : 1) * diff.enemyHpMul));
+      const speed = (level.speedMin + Math.random() * (level.speedMax - level.speedMin)) * diff.enemySpeedMul;
+      const pattern = level.patterns[Math.floor(Math.random() * level.patterns.length)];
+      Entities.enemies.push({
+        x,
+        y: -height - 4,
+        width,
+        height,
+        hp,
+        speed,
+        pattern,
+        isElite,
+        phase: Math.random() * Math.PI * 2,
+        kind: isElite ? "elite" : (Math.random() > 0.5 ? "enemyA" : "enemyB")
+      });
+      Systems.spawner.lastEnemySpawnAt = now;
+    }
+
+    function spawnBoss() {
+      if (Entities.boss) {
+        return;
       }
-    });
+      const hp = Math.round(Config.boss.baseHp * difficultyConfig().bossHpMul);
+      Entities.boss = {
+        x: canvas.width / 2 - Config.boss.width / 2,
+        y: -Config.boss.height - 20,
+        width: Config.boss.width,
+        height: Config.boss.height,
+        hp,
+        maxHp: hp,
+        targetY: 70
+      };
+      GameState.bossSpawned = true;
+      Systems.boss.phase = 1;
+      Systems.boss.directionX = 1;
+      statusText.textContent = "最终BOSS登场";
+      bossBarWrap.style.display = "block";
+    }
 
-    realStartBtn.addEventListener("click", () => {
-      // 关闭开始界面，允许点击正式按钮
-      startScreen.style.display = "none";
-      startBtn.disabled = false;
-      statusText.textContent = "点击“开始游戏”后开始刷怪与自动射击";
-      // 尝试启动BGM（auto-play有时需要用户交互，这里可启动）
-      try { bgmAudio.currentTime = 0; bgmAudio.volume = 0.6; bgmAudio.play(); } catch (e) {}
-    });
-    startBtn.addEventListener("click", () => {
-      if (started) return;
-      started = true;
-      paused = false;
-      gameOver = false;
+    function useBomb(now) {
+      const cd = Config.game.bombCooldownMs * difficultyConfig().bombCooldownMul;
+      if (now - Systems.skills.bombLastUsedAt < cd) {
+        return;
+      }
+      Systems.skills.bombLastUsedAt = now;
+      Entities.enemies.forEach((enemy) => createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2));
+      if (Entities.enemies.length > 0) {
+        addScore(Entities.enemies.length * 8);
+      }
+      Entities.enemies = [];
+      Entities.bossBullets = [];
+      if (Entities.boss) {
+        Entities.boss.hp = Math.max(0, Entities.boss.hp - Config.boss.bombDamage);
+        createExplosion(Entities.boss.x + Entities.boss.width / 2, Entities.boss.y + Entities.boss.height / 2, true);
+      }
+    }
+
+    function startGame() {
+      const now = performance.now();
+      GameState.mode = "running";
+      GameState.score = 0;
+      GameState.levelIndex = 0;
+      GameState.levelStartedAt = now;
+      GameState.levelKills = 0;
+      GameState.levelTransitionUntil = 0;
+      GameState.bossSpawned = false;
+      GameState.bossDefeated = false;
+
+      Systems.spawner.lastEnemySpawnAt = now;
+      Systems.shooter.lastShotAt = now;
+      Systems.skills.bombLastUsedAt = -Infinity;
+      Systems.skills.powerLevel = 1;
+      Systems.boss.phase = 1;
+      Systems.boss.directionX = 1;
+      Systems.boss.lastAttackAt = now;
+      Systems.boss.summonLastAt = now;
+
+      Entities.bullets = [];
+      Entities.enemies = [];
+      Entities.bossBullets = [];
+      Entities.explosions = [];
+      Entities.boss = null;
+
+      scoreEl.textContent = "0";
+      levelEl.textContent = "1";
+      powerLevelEl.textContent = "1";
+      bombCdEl.textContent = "就绪";
+      gameOverText.style.display = "none";
+      bossBarWrap.style.display = "none";
+
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       pauseBtn.textContent = "暂停";
-      statusText.textContent = "游戏进行中";
-      lastShootTime = performance.now();
-      lastEnemySpawnTime = performance.now();
-      // music
-      try{ if (bgmAudio.paused) { bgmAudio.currentTime = 0; bgmAudio.play(); }}catch(e){}
+      statusText.textContent = "第1关开始";
+      difficultyEl.textContent = Config.difficulty[GameState.difficulty].label;
+
+      resetPlayerPosition();
       requestAnimationFrame(gameLoop);
-    });
-    pauseBtn.addEventListener("click", () => {
-      if (!started || gameOver) return;
-      paused = !paused;
-      if (paused) {
-        pauseBtn.textContent = "继续";
-        statusText.textContent = "已暂停";
-        try{ bgmAudio.pause();}catch(e){}
-      } else {
-        pauseBtn.textContent = "暂停";
-        statusText.textContent = "游戏进行中";
-        lastShootTime = performance.now();
-        lastEnemySpawnTime = performance.now();
-        // 继续bgm
-        try{ bgmAudio.play(); }catch(e){}
-        requestAnimationFrame(gameLoop);
-      }
-    });
-
-    // ------------ 逻辑与渲染 ------------
-
-    function shoot() {
-      bullets.push({
-        x: player.x + player.width / 2 - 2,
-        y: player.y - 14,
-        width: 4,
-        height: 14,
-        speed: 15 // 让子弹更快
-      });
-      try{shootAudio.currentTime=0;shootAudio.play();}catch(e){}
     }
 
-    function spawnEnemy() {
-      // 敌机是圆形
-      const radius = 16 + Math.random()*6;
-      const x = radius + Math.random() * (canvas.width - radius*2);
-      const y = -radius-2;
-      // 敌机速度快慢略有变化
-      const speed = 2.5 + Math.random() * 2.2;
-      enemies.push({ x, y, radius, speed });
+    function restartGame() {
+      startGame();
     }
 
-    // 三角形玩家机：实现碰撞检测多用AABB包络盒，视觉上是三角形
-    function isColliding(a, b) {
-      // a: 子弹或玩家, 是{ x,y,width,height }
-      // b: 敌机, 是{ x, y, radius }
-      // 检测矩形与圆形碰撞
-      if (b.radius) {
-        // AABB最近点
-        let nearestX = Math.max(a.x, Math.min(b.x, a.x + a.width));
-        let nearestY = Math.max(a.y, Math.min(b.y, a.y + a.height));
-        let dx = b.x - nearestX;
-        let dy = b.y - nearestY;
-        return (dx * dx + dy * dy) <= (b.radius * b.radius);
-      }
-      // 原敌机(矩形)方案的兼容性，已不用
-      return false;
-    }
-
-    // 玩家三角形碰撞
-    function isPlayerHit(enemy) {
-      // 判断三角形外接矩形和圆形碰撞
-      let a = {
-        x: player.x,
-        y: player.y,
-        width: player.width,
-        height: player.height
-      };
-      return isColliding(a, enemy);
+    function triggerDefeat() {
+      GameState.mode = "gameover";
+      createExplosion(Entities.player.x + Entities.player.width / 2, Entities.player.y + Entities.player.height / 2, true);
+      gameOverText.style.display = "block";
+      gameOverText.querySelector("h1").textContent = "游戏结束";
+      gameOverText.querySelector("p").textContent = "按 R 键重新开始";
+      statusText.textContent = "战机坠毁，按 R 重开";
+      pauseBtn.disabled = true;
+      bossBarWrap.style.display = "none";
     }
 
     function updatePlayer() {
+      const player = Entities.player;
+      const mouse = Entities.mouse;
       const targetX = mouse.x - player.width / 2;
       const targetY = mouse.y - player.height / 2;
       player.x += (targetX - player.x) * player.speedFollow;
       player.y += (targetY - player.y) * player.speedFollow;
-      if (player.x < 0) player.x = 0;
-      if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-      if (player.y < 0) player.y = 0;
-      if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
     }
 
     function updateBullets() {
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        bullets[i].y -= bullets[i].speed;
-        if (bullets[i].y + bullets[i].height < 0) {
-          bullets.splice(i, 1);
+      for (let i = Entities.bullets.length - 1; i >= 0; i -= 1) {
+        const bullet = Entities.bullets[i];
+        bullet.y -= bullet.speed;
+        if (bullet.y + bullet.height < -5) {
+          Entities.bullets.splice(i, 1);
+        }
+      }
+      for (let i = Entities.bossBullets.length - 1; i >= 0; i -= 1) {
+        const bullet = Entities.bossBullets[i];
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
+        if (bullet.y > canvas.height + 30 || bullet.x < -30 || bullet.x > canvas.width + 30) {
+          Entities.bossBullets.splice(i, 1);
         }
       }
     }
 
     function updateEnemies() {
-      for (let i = enemies.length - 1; i >= 0; i--) {
-        enemies[i].y += enemies[i].speed;
-        if (enemies[i].y - enemies[i].radius > canvas.height+30) {
-          enemies.splice(i, 1);
+      for (let i = Entities.enemies.length - 1; i >= 0; i -= 1) {
+        const enemy = Entities.enemies[i];
+        enemy.y += enemy.speed;
+        if (enemy.pattern === "zigzag") {
+          enemy.x += Math.sin(enemy.phase + enemy.y * 0.04) * 1.8;
+        }
+        if (enemy.pattern === "fast") {
+          enemy.y += 0.8;
+        }
+        enemy.x = Math.max(0, Math.min(canvas.width - enemy.width, enemy.x));
+        if (enemy.y > canvas.height + 40) {
+          Entities.enemies.splice(i, 1);
+        }
+      }
+    }
+
+    function updateBoss(now) {
+      const boss = Entities.boss;
+      if (!boss) {
+        return;
+      }
+      if (boss.y < boss.targetY) {
+        boss.y += Config.boss.enterSpeed;
+        return;
+      }
+
+      const ratio = boss.hp / boss.maxHp;
+      const thresholds = Config.boss.phaseThresholds;
+      Systems.boss.phase = ratio <= thresholds[1] ? 3 : ratio <= thresholds[0] ? 2 : 1;
+
+      const phaseSpeed = Systems.boss.phase === 1 ? 2 : Systems.boss.phase === 2 ? 3.2 : 3.8;
+      boss.x += Systems.boss.directionX * phaseSpeed;
+      if (boss.x <= 0 || boss.x + boss.width >= canvas.width) {
+        Systems.boss.directionX *= -1;
+      }
+
+      const baseAttack = 920 * difficultyConfig().bossAttackMul;
+      const attackInterval = Systems.boss.phase === 1 ? baseAttack : Systems.boss.phase === 2 ? baseAttack * 0.7 : baseAttack * 0.5;
+      if (now - Systems.boss.lastAttackAt >= attackInterval) {
+        Systems.boss.lastAttackAt = now;
+        const centerX = boss.x + boss.width / 2;
+        const originY = boss.y + boss.height - 10;
+
+        if (Systems.boss.phase === 1) {
+          Entities.bossBullets.push({ x: centerX - 7, y: originY, width: 14, height: 18, vx: 0, vy: 4.5 });
+        } else if (Systems.boss.phase === 2) {
+          [-1.2, -0.6, 0, 0.6, 1.2].forEach((vx) => {
+            Entities.bossBullets.push({ x: centerX - 7, y: originY, width: 14, height: 18, vx, vy: 4.2 });
+          });
+        } else {
+          if (Math.random() > 0.5) {
+            [-2, -1, 0, 1, 2].forEach((vx) => {
+              Entities.bossBullets.push({ x: centerX - 7, y: originY, width: 14, height: 18, vx, vy: 5.1 });
+            });
+          } else if (now - Systems.boss.summonLastAt > 1300) {
+            Systems.boss.summonLastAt = now;
+            spawnEnemy(now);
+            spawnEnemy(now);
+          }
         }
       }
     }
 
     function updateExplosions() {
-      for (let i = explosions.length - 1; i >= 0; i--) {
-        let ex = explosions[i];
-        ex.frame++;
+      for (let i = Entities.explosions.length - 1; i >= 0; i -= 1) {
+        const ex = Entities.explosions[i];
+        ex.frame += 1;
         if (ex.frame > ex.maxFrame) {
-          explosions.splice(i, 1);
+          Entities.explosions.splice(i, 1);
         }
       }
     }
 
     function handleCollisions() {
-      // 子弹和敌机
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        for (let j = enemies.length - 1; j >= 0; j--) {
-          if (isColliding(bullets[i], enemies[j])) {
-            // 爆炸
-            createExplosion(enemies[j].x, enemies[j].y);
-            try{ explosionAudio.currentTime=0; explosionAudio.play();}catch(e){}
-            bullets.splice(i, 1);
-            enemies.splice(j, 1);
-            score += 10;
-            scoreEl.textContent = score;
+      const player = Entities.player;
+      for (let i = Entities.bullets.length - 1; i >= 0; i -= 1) {
+        const bullet = Entities.bullets[i];
+        let consumed = false;
+
+        for (let j = Entities.enemies.length - 1; j >= 0; j -= 1) {
+          const enemy = Entities.enemies[j];
+          if (intersects(bullet, enemy)) {
+            enemy.hp -= bullet.damage;
+            Entities.bullets.splice(i, 1);
+            consumed = true;
+            if (enemy.hp <= 0) {
+              createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.isElite);
+              Entities.enemies.splice(j, 1);
+              GameState.levelKills += 1;
+              addScore(enemy.isElite ? 24 : 10);
+            }
             break;
           }
         }
-      }
-      // 敌机和玩家飞机
-      for (let i = 0; i < enemies.length; i++) {
-        if (isPlayerHit(enemies[i])) {
-          // 玩家爆炸
-          createExplosion(player.x + player.width/2, player.y + player.height/2, true);
-          try{ explosionAudio.currentTime=0; explosionAudio.play();}catch(e){}
-          gameOver = true;
-          gameOverText.style.display = "block";
-          try{bgmAudio.pause();}catch(e){}
-          break;
+
+        if (consumed) {
+          continue;
         }
+
+        if (Entities.boss && intersects(bullet, Entities.boss)) {
+          Entities.boss.hp -= 1;
+          Entities.bullets.splice(i, 1);
+          if (Math.random() < 0.15) {
+            createExplosion(bullet.x, bullet.y);
+          }
+        }
+      }
+
+      for (const enemy of Entities.enemies) {
+        if (intersects(enemy, player)) {
+          triggerDefeat();
+          return;
+        }
+      }
+      for (const bullet of Entities.bossBullets) {
+        if (intersects(bullet, player)) {
+          triggerDefeat();
+          return;
+        }
+      }
+      if (Entities.boss && intersects(Entities.boss, player)) {
+        triggerDefeat();
       }
     }
 
-    function createExplosion(x, y, isBig) {
-      explosions.push({
-        x, y,
-        radius: isBig ? 38 : 22,
-        color: isBig ? ["#fff", "#fd0", "#fa0", "#f33"] : ["#fff","#ff0","#f60","#f00"],
-        frame: 0,
-        maxFrame: isBig ? 26 : 18
-      });
+    function checkLevelProgress(now) {
+      if (GameState.bossDefeated) {
+        return;
+      }
+      if (GameState.levelTransitionUntil > now) {
+        return;
+      }
+
+      if (GameState.levelIndex >= Config.levels.length) {
+        if (!GameState.bossSpawned) {
+          spawnBoss();
+        }
+        return;
+      }
+
+      const level = currentLevelConfig();
+      const survived = now - GameState.levelStartedAt;
+      const passed = GameState.levelKills >= level.killTarget || survived >= level.surviveMs;
+      if (!passed) {
+        return;
+      }
+
+      GameState.levelIndex += 1;
+      GameState.levelKills = 0;
+
+      if (GameState.levelIndex < Config.levels.length) {
+        levelEl.textContent = String(GameState.levelIndex + 1);
+        GameState.levelTransitionUntil = now + Config.game.levelTransitionMs;
+        GameState.levelStartedAt = now + Config.game.levelTransitionMs;
+        statusText.textContent = `第${GameState.levelIndex + 1}关即将开始`;
+        Entities.enemies = [];
+        Entities.bossBullets = [];
+      } else {
+        GameState.levelTransitionUntil = now + Config.game.levelTransitionMs;
+        statusText.textContent = "清理战场，BOSS即将出现";
+        Entities.enemies = [];
+      }
+    }
+
+    function maybeSpawnEnemy(now) {
+      if (GameState.levelIndex >= Config.levels.length) {
+        return;
+      }
+      if (GameState.levelTransitionUntil > now) {
+        return;
+      }
+      const level = currentLevelConfig();
+      const interval = level.spawnMs * difficultyConfig().enemySpawnMul;
+      if (now - Systems.spawner.lastEnemySpawnAt >= interval) {
+        spawnEnemy(now);
+      }
+    }
+
+    function maybeShoot(now) {
+      if (now - Systems.shooter.lastShotAt >= Config.game.shootIntervalMs) {
+        shoot(now);
+      }
+    }
+
+    function updateHud(now) {
+      const cd = Config.game.bombCooldownMs * difficultyConfig().bombCooldownMul;
+      const remain = Math.max(0, (cd - (now - Systems.skills.bombLastUsedAt)) / 1000);
+      bombCdEl.textContent = remain <= 0 ? "就绪" : `${remain.toFixed(1)}s`;
+      difficultyEl.textContent = Config.difficulty[GameState.difficulty].label;
+
+      if (Entities.boss) {
+        bossBarWrap.style.display = "block";
+        bossBarFill.style.width = `${Math.max(0, (Entities.boss.hp / Entities.boss.maxHp) * 100)}%`;
+      } else {
+        bossBarWrap.style.display = "none";
+      }
+    }
+
+    function drawSpriteOrFallback(key, x, y, w, h, fallbackColor) {
+      const img = Assets.sprites[key];
+      if (Assets.loaded && img && img.complete) {
+        ctx.drawImage(img, x, y, w, h);
+      } else {
+        ctx.fillStyle = fallbackColor;
+        ctx.fillRect(x, y, w, h);
+      }
     }
 
     function drawPlayer() {
-      // 画白色三角形
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(player.x + player.width / 2, player.y); // 上顶点
-      ctx.lineTo(player.x, player.y + player.height);   // 左下
-      ctx.lineTo(player.x + player.width, player.y + player.height); // 右下
-      ctx.closePath();
-      ctx.shadowColor = "#53eaff";
-      ctx.shadowBlur = 16;
-      ctx.fillStyle = "#fff";
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      // 前机舱风挡
-      ctx.beginPath();
-      ctx.moveTo(player.x + player.width/2, player.y + 5);
-      ctx.lineTo(player.x + player.width/2 - 6, player.y + 18);
-      ctx.lineTo(player.x + player.width/2 + 6, player.y + 18);
-      ctx.closePath();
-      ctx.fillStyle = "#49bcfa";
-      ctx.fill();
-      ctx.restore();
+      const p = Entities.player;
+      drawSpriteOrFallback("player", p.x, p.y, p.width, p.height, "#fff");
     }
 
     function drawBullets() {
-      ctx.save();
-      ctx.shadowColor = "#18e0ff";
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = "#34cfff";
-      bullets.forEach((b) => {
-        ctx.fillRect(b.x, b.y, b.width, b.height);
-      });
-      ctx.shadowBlur = 0;
-      ctx.restore();
+      for (const b of Entities.bullets) {
+        drawSpriteOrFallback("bullet", b.x, b.y, b.width, b.height, "#46d8ff");
+      }
+      for (const b of Entities.bossBullets) {
+        drawSpriteOrFallback("bossBullet", b.x, b.y, b.width, b.height, "#ff6f87");
+      }
     }
 
     function drawEnemies() {
-      enemies.forEach((e) => {
-        // 画圆形
-        ctx.save();
-        let grad = ctx.createRadialGradient(
-          e.x, e.y, 3,
-          e.x, e.y, e.radius
-        );
-        grad.addColorStop(0, "#fff");
-        grad.addColorStop(0.3, "#fa8b78");
-        grad.addColorStop(1, "#ed1818");
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2, false);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.shadowColor = "#fd8b43";
-        ctx.shadowBlur = 12;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.restore();
-        // 画圆环花纹（可选）
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.radius*0.6, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-      });
+      for (const e of Entities.enemies) {
+        drawSpriteOrFallback(e.kind, e.x, e.y, e.width, e.height, e.isElite ? "#8a1f39" : "#db3d32");
+      }
+      if (Entities.boss) {
+        const b = Entities.boss;
+        drawSpriteOrFallback("boss", b.x, b.y, b.width, b.height, "#8c1d36");
+      }
     }
 
     function drawExplosions() {
-      for (let ex of explosions) {
-        let pct = ex.frame / ex.maxFrame;
-        let rad = ex.radius * (0.8 + Math.random()*0.35 + pct*0.89);
-        ctx.save();
-        for(let i=0;i<ex.color.length;i++){
-            let progress = i / (ex.color.length-1);
-            ctx.beginPath();
-            ctx.arc(ex.x, ex.y, rad*(1-progress*0.94)*(1-pct*0.7), 0, Math.PI*2);
-            ctx.globalAlpha = 1-(pct*1.01)+(1-progress)*0.08;
-            ctx.fillStyle = ex.color[i];
-            ctx.fill();
+      for (const ex of Entities.explosions) {
+        const pct = ex.frame / ex.maxFrame;
+        const rad = ex.radius * (1 + pct * 0.7);
+        for (let i = 0; i < ex.color.length; i += 1) {
+          const progress = i / (ex.color.length - 1);
+          ctx.beginPath();
+          ctx.arc(ex.x, ex.y, rad * (1 - progress * 0.85), 0, Math.PI * 2);
+          ctx.globalAlpha = Math.max(0, 0.9 - pct) * (1 - progress * 0.35);
+          ctx.fillStyle = ex.color[i];
+          ctx.fill();
         }
-        ctx.restore();
       }
       ctx.globalAlpha = 1;
     }
 
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "#020611");
+      gradient.addColorStop(1, "#000");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       drawPlayer();
       drawBullets();
       drawEnemies();
       drawExplosions();
     }
 
-    function restartGame() {
-      bullets = [];
-      enemies = [];
-      explosions = [];
-      score = 0;
-      gameOver = false;
-      started = true;
-      paused = false;
-      scoreEl.textContent = score;
-      gameOverText.style.display = "none";
-      startBtn.disabled = true;
-      pauseBtn.disabled = false;
-      pauseBtn.textContent = "暂停";
-      statusText.textContent = "游戏进行中";
-      lastShootTime = performance.now();
-      lastEnemySpawnTime = performance.now();
-      resetPlayerPosition();
-      try{bgmAudio.currentTime=0;bgmAudio.play();}catch(e){}
-      render();
-      requestAnimationFrame(gameLoop);
-    }
-
-    function gameLoop(timestamp) {
-      if (gameOver || paused || !started) return;
-
-      if (timestamp - lastShootTime >= SHOOT_INTERVAL) {
-        shoot();
-        lastShootTime = timestamp;
+    function gameLoop(now) {
+      if (GameState.mode !== "running") {
+        return;
       }
-      if (timestamp - lastEnemySpawnTime >= ENEMY_SPAWN_INTERVAL) {
-        spawnEnemy();
-        lastEnemySpawnTime = timestamp;
-      }
+
+      maybeShoot(now);
+      maybeSpawnEnemy(now);
       updatePlayer();
       updateBullets();
       updateEnemies();
+      updateBoss(now);
       updateExplosions();
       handleCollisions();
+
+      if (Entities.boss && Entities.boss.hp <= 0 && !GameState.bossDefeated) {
+        GameState.bossDefeated = true;
+        GameState.mode = "cleared";
+        createExplosion(Entities.boss.x + Entities.boss.width / 2, Entities.boss.y + Entities.boss.height / 2, true);
+        gameOverText.style.display = "block";
+        gameOverText.querySelector("h1").textContent = "通关成功";
+        gameOverText.querySelector("p").textContent = `最终分数：${GameState.score}（按 R 键再来一局）`;
+        statusText.textContent = "BOSS已被击败";
+        bossBarWrap.style.display = "none";
+        pauseBtn.disabled = true;
+      }
+
+      checkLevelProgress(now);
+      updateHud(now);
       render();
-      requestAnimationFrame(gameLoop);
+
+      if (GameState.mode === "running") {
+        requestAnimationFrame(gameLoop);
+      }
     }
 
-    // 初始渲染
+    canvas.addEventListener("mousemove", (e) => {
+      if (GameState.mode !== "running") {
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      Entities.mouse.x = e.clientX - rect.left;
+      Entities.mouse.y = e.clientY - rect.top;
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      if (GameState.mode !== "running") {
+        return;
+      }
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      Entities.mouse.x = touch.clientX - rect.left;
+      Entities.mouse.y = touch.clientY - rect.top;
+    }, { passive: false });
+
+    window.addEventListener("keydown", (e) => {
+      if ((e.key === "r" || e.key === "R") && (GameState.mode === "gameover" || GameState.mode === "cleared")) {
+        restartGame();
+      }
+      if (e.code === "Space" && GameState.mode === "running") {
+        e.preventDefault();
+        useBomb(performance.now());
+      }
+    });
+
+    difficultyInputs.forEach((input) => {
+      input.addEventListener("change", () => {
+        GameState.difficulty = input.value;
+        difficultyEl.textContent = Config.difficulty[GameState.difficulty].label;
+      });
+    });
+
+    realStartBtn.addEventListener("click", () => {
+      startScreen.style.display = "none";
+      startBtn.disabled = false;
+      statusText.textContent = "点击“开始游戏”进入第1关";
+    });
+
+    startBtn.addEventListener("click", () => {
+      if (GameState.mode === "running") {
+        return;
+      }
+      startGame();
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (GameState.mode !== "running" && GameState.mode !== "paused") {
+        return;
+      }
+      if (GameState.mode === "running") {
+        GameState.mode = "paused";
+        pauseBtn.textContent = "继续";
+        statusText.textContent = "已暂停（再次点击继续）";
+      } else {
+        GameState.mode = "running";
+        pauseBtn.textContent = "暂停";
+        statusText.textContent = `第${GameState.levelIndex + 1}关进行中`;
+        requestAnimationFrame(gameLoop);
+      }
+    });
+
+    loadSprites();
     render();
   </script>
 </body>
