@@ -3,45 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>飞机大战标准版</title>
+  <title>飞机大战</title>
   <style>
-    html, body {
+    *, *::before, *::after {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
       width: 100%;
       height: 100%;
-      background: #000;
       overflow: hidden;
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: #000;
     }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 0%, #0a0a2e 0%, #050510 40%, #000 100%);
+    }
+
+    /* ── Canvas ── */
     #gameCanvas {
       display: block;
-      margin: 0 auto;
-      background: #000;
-      border: 1px solid #222;
+      border-radius: 0;
       z-index: 2;
     }
+
+    /* ── HUD ── */
     #hud {
       position: fixed;
-      top: 10px;
+      top: 12px;
       left: 50%;
       transform: translateX(-50%);
-      color: #fff;
-      font-size: 15px;
+      color: rgba(255,255,255,0.9);
+      font-size: 13px;
+      font-weight: 500;
       user-select: none;
       pointer-events: none;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.2px;
       z-index: 10;
       text-align: center;
-      width: min(95vw, 760px);
+      padding: 8px 20px;
+      background: rgba(28,28,30,0.72);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      white-space: nowrap;
+      width: auto;
+      max-width: 95vw;
     }
     #hud .sep {
-      opacity: 0.5;
-      margin: 0 8px;
+      width: 1px;
+      height: 14px;
+      background: rgba(255,255,255,0.15);
+      margin: 0;
     }
+    #hud .hud-label {
+      color: rgba(255,255,255,0.45);
+      font-size: 11px;
+      font-weight: 400;
+      margin-right: 3px;
+    }
+    #hud .hud-value {
+      color: rgba(255,255,255,0.9);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Controls ── */
     #controls {
       position: fixed;
-      top: 44px;
+      top: 62px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -49,162 +89,297 @@
       z-index: 10;
     }
     #controls button {
-      background: #111;
-      color: #fff;
-      border: 1px solid #444;
-      padding: 6px 12px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      color: rgba(255,255,255,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 6px 18px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    #controls button:hover:not(:disabled) {
+      background: rgba(255,255,255,0.14);
     }
     #controls button:disabled {
-      opacity: 0.5;
+      opacity: 0.35;
       cursor: not-allowed;
     }
+
+    /* ── Status Text ── */
     #statusText {
       position: fixed;
-      top: 82px;
+      top: 102px;
       left: 50%;
       transform: translateX(-50%);
-      color: #bbb;
-      font-size: 14px;
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      font-weight: 400;
       user-select: none;
       pointer-events: none;
       z-index: 10;
       white-space: nowrap;
+      letter-spacing: 0.3px;
     }
+
+    /* ── Boss HP Bar ── */
     #bossBarWrap {
       position: fixed;
-      top: 108px;
+      top: 80px;
       left: 50%;
       transform: translateX(-50%);
-      width: min(440px, 90vw);
-      height: 16px;
-      border: 1px solid #623;
-      border-radius: 10px;
+      width: min(320px, 70vw);
+      height: 5px;
+      border-radius: 3px;
       overflow: hidden;
-      background: rgba(60, 0, 0, 0.55);
+      background: rgba(255,255,255,0.08);
       z-index: 12;
       display: none;
+      border: none;
     }
     #bossBarFill {
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, #ff7953, #ff205f);
+      background: linear-gradient(90deg, #FF3B30, #FF6961);
+      border-radius: 3px;
       transition: width 0.15s linear;
+      box-shadow: 0 0 12px rgba(255,59,48,0.4);
     }
-    #gameOverText {
+
+    /* ── Game Over / Cleared Modal ── */
+    #gameOverOverlay {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #fff;
-      text-align: center;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 50;
       display: none;
-      user-select: none;
-      z-index: 12;
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.35s ease;
     }
-    #gameOverText h1 {
-      margin: 0 0 10px;
-      font-size: 36px;
+    #gameOverCard {
+      background: rgba(44,44,46,0.8);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 40px 48px;
+      text-align: center;
+      animation: scaleIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      max-width: 90vw;
     }
-    #gameOverText p {
-      margin: 0;
-      font-size: 18px;
-      opacity: 0.95;
+    #gameOverCard h1 {
+      color: #fff;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
     }
+    #gameOverCard p {
+      color: rgba(255,255,255,0.5);
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+    #gameOverCard .score-display {
+      color: #FF9F0A;
+      font-size: 40px;
+      font-weight: 700;
+      margin: 16px 0 4px;
+      letter-spacing: -1px;
+    }
+    #gameOverCard .restart-hint {
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      margin-top: 20px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Start Screen ── */
     #startScreen {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(10, 10, 16, 0.95);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
       z-index: 100;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      font-size: 24px;
-      letter-spacing: 2px;
       user-select: none;
       text-align: center;
-      padding: 0 16px;
-      box-sizing: border-box;
+      padding: 0 24px;
+      animation: fadeIn 0.5s ease;
+    }
+    #startScreen .logo-icon {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 20px;
+      opacity: 0.9;
     }
     #startScreen h1 {
-      font-size: 48px;
-      margin-bottom: 14px;
-      letter-spacing: 4px;
+      font-size: 42px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -1px;
+      margin-bottom: 6px;
     }
-    #startScreen button {
-      background: #008cff;
+    #startScreen .subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 15px;
+      font-weight: 400;
+      margin-bottom: 32px;
+    }
+    #startScreen .info-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 20px 28px;
+      margin-bottom: 28px;
+      max-width: 360px;
+      text-align: left;
+    }
+    #startScreen .info-box p {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      line-height: 1.8;
+      font-weight: 400;
+    }
+    #startScreen .info-box .key {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      border-radius: 5px;
+      padding: 1px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+      margin: 0 2px;
+    }
+
+    /* ── Segmented Control ── */
+    .segmented-control {
+      display: inline-flex;
+      background: rgba(255,255,255,0.08);
+      border-radius: 9px;
+      padding: 2px;
+      position: relative;
+      margin-bottom: 28px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .segmented-control input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .segmented-control label {
+      padding: 7px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      cursor: pointer;
+      border-radius: 7px;
+      transition: all 0.25s ease;
+      position: relative;
+      z-index: 1;
+      user-select: none;
+    }
+    .segmented-control input[type="radio"]:checked + label {
+      color: #fff;
+      background: rgba(255,255,255,0.16);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    /* ── Start Button ── */
+    .start-btn {
+      background: #007AFF;
       color: #fff;
       border: none;
-      font-size: 20px;
-      padding: 12px 36px;
-      margin-top: 24px;
-      border-radius: 5px;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 14px 48px;
+      border-radius: 22px;
       cursor: pointer;
+      font-family: inherit;
+      letter-spacing: -0.2px;
+      transition: all 0.2s ease;
       outline: none;
-      transition: background 0.2s;
     }
-    #startScreen button:hover {
-      background: #3ae2ff;
+    .start-btn:hover {
+      background: #0056CC;
+      transform: scale(1.02);
     }
-    #difficultyGroup {
-      margin-top: 16px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-      font-size: 14px;
-      letter-spacing: 0;
+    .start-btn:active {
+      transform: scale(0.98);
     }
-    .difficultyItem {
-      border: 1px solid #3e4a5b;
-      border-radius: 16px;
-      padding: 6px 10px;
-      cursor: pointer;
-      background: #171d28;
-    }
-    .difficultyItem input {
-      margin-right: 4px;
-    }
+
     #credit {
-      color: #aaa;
-      font-size: 13px;
-      margin-top: 24px;
-      letter-spacing: 1px;
+      color: rgba(255,255,255,0.2);
+      font-size: 12px;
+      margin-top: 32px;
+      letter-spacing: 0.5px;
+      font-weight: 400;
     }
   </style>
 </head>
 <body>
   <div id="startScreen">
+    <svg class="logo-icon" viewBox="0 0 84 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="logoGrad" x1="42" y1="4" x2="42" y2="58" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#0A84FF"/>
+          <stop offset="1" stop-color="#5E5CE6"/>
+        </linearGradient>
+      </defs>
+      <polygon points="42,6 12,56 72,56" fill="url(#logoGrad)" opacity="0.9"/>
+      <polygon points="42,18 28,46 56,46" fill="rgba(255,255,255,0.2)"/>
+      <rect x="30" y="50" width="24" height="8" rx="4" fill="rgba(255,255,255,0.15)"/>
+    </svg>
     <h1>飞机大战</h1>
-    <div style="font-size:18px; line-height:1.6;">
-      鼠标或手指控制飞机，自动射击<br>
-      Space 释放炸弹（清屏并伤害BOSS）<br>
-      5关推进，最终BOSS三阶段<br>
-      <br>
-      <b>标准版单文件无外部素材依赖</b>
+    <p class="subtitle">经典射击 · 深空对决</p>
+    <div class="info-box">
+      <p>
+        鼠标或手指控制飞机，自动射击<br>
+        <span class="key">Space</span> 释放炸弹（清屏并伤害BOSS）<br>
+        5关推进，最终BOSS三阶段<br>
+        单文件 · 无外部依赖 · 即开即玩
+      </p>
     </div>
-    <div id="difficultyGroup">
-      <label class="difficultyItem"><input type="radio" name="difficulty" value="easy">简单</label>
-      <label class="difficultyItem"><input type="radio" name="difficulty" value="normal" checked>普通</label>
-      <label class="difficultyItem"><input type="radio" name="difficulty" value="hard">困难</label>
+    <div class="segmented-control">
+      <input type="radio" name="difficulty" value="easy" id="diff-easy">
+      <label for="diff-easy">简单</label>
+      <input type="radio" name="difficulty" value="normal" id="diff-normal" checked>
+      <label for="diff-normal">普通</label>
+      <input type="radio" name="difficulty" value="hard" id="diff-hard">
+      <label for="diff-hard">困难</label>
     </div>
-    <button id="realStartBtn">开始游戏</button>
+    <button class="start-btn" id="realStartBtn">开始游戏</button>
     <div id="credit">by GPT Rewriter</div>
   </div>
 
   <div id="hud">
-    分数：<span id="score">0</span>
-    <span class="sep">|</span>关卡：<span id="level">1</span>
-    <span class="sep">|</span>难度：<span id="difficultyText">普通</span>
-    <span class="sep">|</span>炸弹CD：<span id="bombCd">就绪</span>
-    <span class="sep">|</span>火力：<span id="powerLevel">1</span>
+    <div><span class="hud-label">分数</span><span class="hud-value" id="score">0</span></div>
+    <div class="sep"></div>
+    <div><span class="hud-label">关卡</span><span class="hud-value" id="level">1</span></div>
+    <div class="sep"></div>
+    <div><span class="hud-label">难度</span><span class="hud-value" id="difficultyText">普通</span></div>
+    <div class="sep"></div>
+    <div><span class="hud-label">炸弹</span><span class="hud-value" id="bombCd">就绪</span></div>
+    <div class="sep"></div>
+    <div><span class="hud-label">火力</span><span class="hud-value" id="powerLevel">1</span></div>
   </div>
   <div id="controls">
     <button id="startBtn" disabled>开始游戏</button>
@@ -213,9 +388,14 @@
   <div id="statusText">请选择难度并开始游戏</div>
   <div id="bossBarWrap"><div id="bossBarFill"></div></div>
   <canvas id="gameCanvas"></canvas>
-  <div id="gameOverText">
-    <h1>游戏结束</h1>
-    <p>按 R 键重新开始</p>
+
+  <div id="gameOverOverlay">
+    <div id="gameOverCard">
+      <h1 id="goTitle">游戏结束</h1>
+      <div class="score-display" id="goScore" style="display:none;">0</div>
+      <p id="goSubtitle">按 R 键重新开始</p>
+      <div class="restart-hint">按 R 键再来一局</div>
+    </div>
   </div>
 
   <script>
@@ -226,7 +406,6 @@
     const difficultyEl = document.getElementById("difficultyText");
     const bombCdEl = document.getElementById("bombCd");
     const powerLevelEl = document.getElementById("powerLevel");
-    const gameOverText = document.getElementById("gameOverText");
     const startBtn = document.getElementById("startBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const statusText = document.getElementById("statusText");
@@ -235,6 +414,10 @@
     const bossBarWrap = document.getElementById("bossBarWrap");
     const bossBarFill = document.getElementById("bossBarFill");
     const difficultyInputs = Array.from(document.querySelectorAll("input[name='difficulty']"));
+    const gameOverOverlay = document.getElementById("gameOverOverlay");
+    const goTitle = document.getElementById("goTitle");
+    const goScore = document.getElementById("goScore");
+    const goSubtitle = document.getElementById("goSubtitle");
 
     function resizeCanvas() {
       canvas.width = Math.min(window.innerWidth, 480);
@@ -334,19 +517,130 @@
 
     const Assets = { sprites: {}, loaded: false };
 
+    // ── Star field ──
+    const Stars = { particles: [], initialized: false };
+
+    function initStars() {
+      Stars.particles = [];
+      for (let i = 0; i < 80; i++) {
+        Stars.particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 1.5 + 0.3,
+          speed: Math.random() * 0.4 + 0.1,
+          opacity: Math.random() * 0.5 + 0.1
+        });
+      }
+      Stars.initialized = true;
+    }
+
+    function updateStars() {
+      for (const star of Stars.particles) {
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+          star.y = 0;
+          star.x = Math.random() * canvas.width;
+        }
+      }
+    }
+
+    function drawStars() {
+      for (const star of Stars.particles) {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180, 200, 255, ${star.opacity})`;
+        ctx.fill();
+      }
+    }
+
     function svgSprite(svg) {
       return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     }
 
     function createSpriteLibrary() {
       return {
-        player: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='84' height='68' viewBox='0 0 84 68'><polygon points='42,4 8,58 76,58' fill='white' stroke='#a4f0ff' stroke-width='3'/><polygon points='42,14 30,42 54,42' fill='#49bcfa'/><rect x='28' y='50' width='28' height='10' rx='5' fill='#2a7bbf'/></svg>`),
-        enemyA: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><path d='M32 6L56 26L47 58H17L8 26Z' fill='#da2b2b' stroke='#ffb0a5' stroke-width='3'/><circle cx='32' cy='30' r='8' fill='#ffd7d2'/></svg>`),
-        enemyB: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><path d='M32 6L58 32L32 58L6 32Z' fill='#b7142e' stroke='#ffc9d2' stroke-width='3'/><path d='M20 36h24' stroke='#fff' stroke-width='4'/></svg>`),
-        elite: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'><path d='M36 6L64 22L56 60H16L8 22Z' fill='#881230' stroke='#ffd4de' stroke-width='3'/><circle cx='36' cy='34' r='10' fill='#ffe9ef'/><circle cx='36' cy='34' r='4' fill='#ff4a66'/></svg>`),
-        boss: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='220' height='140' viewBox='0 0 220 140'><path d='M12 50L70 16H150L208 50L184 126H36Z' fill='#4f1024' stroke='#ffc8d8' stroke-width='4'/><rect x='76' y='44' width='68' height='34' rx='6' fill='#ffd7e2'/><circle cx='52' cy='74' r='10' fill='#ff5a74'/><circle cx='168' cy='74' r='10' fill='#ff5a74'/></svg>`),
-        bullet: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='12' height='28' viewBox='0 0 12 28'><rect x='4' y='2' width='4' height='24' rx='2' fill='#4bdcff'/><rect x='3' y='0' width='6' height='8' rx='2' fill='#d6faff'/></svg>`),
-        bossBullet: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='18' height='24' viewBox='0 0 18 24'><ellipse cx='9' cy='12' rx='7' ry='10' fill='#ff5b72'/><ellipse cx='9' cy='12' rx='3' ry='5' fill='#ffd1da'/></svg>`)
+        player: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='84' height='68' viewBox='0 0 84 68'>
+          <defs>
+            <linearGradient id='pg' x1='42' y1='4' x2='42' y2='58' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#0A84FF'/>
+              <stop offset='1' stop-color='#5E5CE6'/>
+            </linearGradient>
+          </defs>
+          <polygon points='42,4 8,58 76,58' fill='url(#pg)' stroke='rgba(100,180,255,0.5)' stroke-width='2'/>
+          <polygon points='42,16 28,46 56,46' fill='rgba(255,255,255,0.2)'/>
+          <circle cx='42' cy='30' r='4' fill='rgba(255,255,255,0.6)'/>
+          <rect x='28' y='50' width='28' height='8' rx='4' fill='rgba(100,180,255,0.3)'/>
+        </svg>`),
+        enemyA: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
+          <defs>
+            <linearGradient id='ea' x1='32' y1='6' x2='32' y2='58' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#FF6961'/>
+              <stop offset='1' stop-color='#FF3B30'/>
+            </linearGradient>
+          </defs>
+          <path d='M32 6L56 26L47 58H17L8 26Z' fill='url(#ea)' stroke='rgba(255,150,140,0.4)' stroke-width='2'/>
+          <circle cx='32' cy='30' r='7' fill='rgba(255,255,255,0.25)'/>
+        </svg>`),
+        enemyB: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
+          <defs>
+            <linearGradient id='eb' x1='32' y1='6' x2='32' y2='58' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#BF5AF2'/>
+              <stop offset='1' stop-color='#8B2FC0'/>
+            </linearGradient>
+          </defs>
+          <path d='M32 6L58 32L32 58L6 32Z' fill='url(#eb)' stroke='rgba(200,150,255,0.4)' stroke-width='2'/>
+          <path d='M20 36h24' stroke='rgba(255,255,255,0.3)' stroke-width='4' stroke-linecap='round'/>
+        </svg>`),
+        elite: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'>
+          <defs>
+            <linearGradient id='el' x1='36' y1='6' x2='36' y2='60' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#FF9F0A'/>
+              <stop offset='1' stop-color='#FF6723'/>
+            </linearGradient>
+          </defs>
+          <path d='M36 6L64 22L56 60H16L8 22Z' fill='url(#el)' stroke='rgba(255,200,100,0.4)' stroke-width='2'/>
+          <circle cx='36' cy='34' r='9' fill='rgba(255,255,255,0.2)'/>
+          <circle cx='36' cy='34' r='3.5' fill='rgba(255,255,255,0.5)'/>
+        </svg>`),
+        boss: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='220' height='140' viewBox='0 0 220 140'>
+          <defs>
+            <linearGradient id='bg' x1='110' y1='16' x2='110' y2='126' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#FF3B30'/>
+              <stop offset='1' stop-color='#8B0000'/>
+            </linearGradient>
+          </defs>
+          <path d='M12 50L70 16H150L208 50L184 126H36Z' fill='url(#bg)' stroke='rgba(255,150,140,0.3)' stroke-width='3'/>
+          <rect x='76' y='44' width='68' height='34' rx='6' fill='rgba(255,255,255,0.15)'/>
+          <circle cx='52' cy='74' r='9' fill='rgba(255,100,80,0.8)'>
+            <animate attributeName='opacity' values='0.6;1;0.6' dur='1.5s' repeatCount='indefinite'/>
+          </circle>
+          <circle cx='168' cy='74' r='9' fill='rgba(255,100,80,0.8)'>
+            <animate attributeName='opacity' values='0.6;1;0.6' dur='1.5s' repeatCount='indefinite' begin='0.75s'/>
+          </circle>
+          <circle cx='110' cy='61' r='5' fill='rgba(255,200,180,0.6)'>
+            <animate attributeName='opacity' values='0.4;0.8;0.4' dur='2s' repeatCount='indefinite'/>
+          </circle>
+        </svg>`),
+        bullet: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='12' height='28' viewBox='0 0 12 28'>
+          <defs>
+            <linearGradient id='bl' x1='6' y1='0' x2='6' y2='26' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#64D2FF'/>
+              <stop offset='1' stop-color='#0A84FF'/>
+            </linearGradient>
+          </defs>
+          <rect x='4' y='2' width='4' height='24' rx='2' fill='url(#bl)'/>
+          <rect x='3' y='0' width='6' height='8' rx='2' fill='rgba(180,220,255,0.8)'/>
+        </svg>`),
+        bossBullet: svgSprite(`<svg xmlns='http://www.w3.org/2000/svg' width='18' height='24' viewBox='0 0 18 24'>
+          <defs>
+            <linearGradient id='bb' x1='9' y1='2' x2='9' y2='22' gradientUnits='userSpaceOnUse'>
+              <stop stop-color='#FF6961'/>
+              <stop offset='1' stop-color='#FF3B30'/>
+            </linearGradient>
+          </defs>
+          <ellipse cx='9' cy='12' rx='7' ry='10' fill='url(#bb)'/>
+          <ellipse cx='9' cy='12' rx='3' ry='5' fill='rgba(255,220,220,0.5)'/>
+        </svg>`)
       };
     }
 
@@ -402,7 +696,7 @@
         x,
         y,
         radius: isBig ? 38 : 20,
-        color: isBig ? ["#fff", "#fd0", "#fa0", "#f33"] : ["#fff", "#ff0", "#f60", "#f00"],
+        color: isBig ? ["#fff", "#FFD60A", "#FF9F0A", "#FF3B30"] : ["#fff", "#FFD60A", "#FF9F0A", "#FF453A"],
         frame: 0,
         maxFrame: isBig ? 24 : 16
       });
@@ -494,6 +788,22 @@
       }
     }
 
+    function showGameOverModal(title, subtitle, showScore) {
+      goTitle.textContent = title;
+      goSubtitle.textContent = subtitle;
+      if (showScore) {
+        goScore.textContent = String(GameState.score);
+        goScore.style.display = "block";
+      } else {
+        goScore.style.display = "none";
+      }
+      gameOverOverlay.style.display = "flex";
+    }
+
+    function hideGameOverModal() {
+      gameOverOverlay.style.display = "none";
+    }
+
     function startGame() {
       const now = performance.now();
       GameState.mode = "running";
@@ -524,7 +834,7 @@
       levelEl.textContent = "1";
       powerLevelEl.textContent = "1";
       bombCdEl.textContent = "就绪";
-      gameOverText.style.display = "none";
+      hideGameOverModal();
       bossBarWrap.style.display = "none";
 
       startBtn.disabled = true;
@@ -533,6 +843,7 @@
       statusText.textContent = "第1关开始";
       difficultyEl.textContent = Config.difficulty[GameState.difficulty].label;
 
+      if (!Stars.initialized) initStars();
       resetPlayerPosition();
       requestAnimationFrame(gameLoop);
     }
@@ -544,9 +855,7 @@
     function triggerDefeat() {
       GameState.mode = "gameover";
       createExplosion(Entities.player.x + Entities.player.width / 2, Entities.player.y + Entities.player.height / 2, true);
-      gameOverText.style.display = "block";
-      gameOverText.querySelector("h1").textContent = "游戏结束";
-      gameOverText.querySelector("p").textContent = "按 R 键重新开始";
+      showGameOverModal("游戏结束", "战机坠毁", true);
       statusText.textContent = "战机坠毁，按 R 重开";
       pauseBtn.disabled = true;
       bossBarWrap.style.display = "none";
@@ -792,25 +1101,30 @@
 
     function drawPlayer() {
       const p = Entities.player;
-      drawSpriteOrFallback("player", p.x, p.y, p.width, p.height, "#fff");
+      drawSpriteOrFallback("player", p.x, p.y, p.width, p.height, "#0A84FF");
+      // Engine glow
+      ctx.beginPath();
+      ctx.arc(p.x + p.width / 2, p.y + p.height + 2, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(10, 132, 255, 0.4)";
+      ctx.fill();
     }
 
     function drawBullets() {
       for (const b of Entities.bullets) {
-        drawSpriteOrFallback("bullet", b.x, b.y, b.width, b.height, "#46d8ff");
+        drawSpriteOrFallback("bullet", b.x, b.y, b.width, b.height, "#0A84FF");
       }
       for (const b of Entities.bossBullets) {
-        drawSpriteOrFallback("bossBullet", b.x, b.y, b.width, b.height, "#ff6f87");
+        drawSpriteOrFallback("bossBullet", b.x, b.y, b.width, b.height, "#FF3B30");
       }
     }
 
     function drawEnemies() {
       for (const e of Entities.enemies) {
-        drawSpriteOrFallback(e.kind, e.x, e.y, e.width, e.height, e.isElite ? "#8a1f39" : "#db3d32");
+        drawSpriteOrFallback(e.kind, e.x, e.y, e.width, e.height, e.isElite ? "#FF9F0A" : "#FF3B30");
       }
       if (Entities.boss) {
         const b = Entities.boss;
-        drawSpriteOrFallback("boss", b.x, b.y, b.width, b.height, "#8c1d36");
+        drawSpriteOrFallback("boss", b.x, b.y, b.width, b.height, "#8B0000");
       }
     }
 
@@ -832,11 +1146,17 @@
 
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Deep space gradient background
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, "#020611");
-      gradient.addColorStop(1, "#000");
+      gradient.addColorStop(0, "#050510");
+      gradient.addColorStop(0.5, "#020208");
+      gradient.addColorStop(1, "#000000");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Stars
+      drawStars();
 
       drawPlayer();
       drawBullets();
@@ -856,15 +1176,14 @@
       updateEnemies();
       updateBoss(now);
       updateExplosions();
+      updateStars();
       handleCollisions();
 
       if (Entities.boss && Entities.boss.hp <= 0 && !GameState.bossDefeated) {
         GameState.bossDefeated = true;
         GameState.mode = "cleared";
         createExplosion(Entities.boss.x + Entities.boss.width / 2, Entities.boss.y + Entities.boss.height / 2, true);
-        gameOverText.style.display = "block";
-        gameOverText.querySelector("h1").textContent = "通关成功";
-        gameOverText.querySelector("p").textContent = `最终分数：${GameState.score}（按 R 键再来一局）`;
+        showGameOverModal("通关成功", `最终分数：${GameState.score}`, true);
         statusText.textContent = "BOSS已被击败";
         bossBarWrap.style.display = "none";
         pauseBtn.disabled = true;
@@ -918,8 +1237,7 @@
 
     realStartBtn.addEventListener("click", () => {
       startScreen.style.display = "none";
-      startBtn.disabled = false;
-      statusText.textContent = "点击“开始游戏”进入第1关";
+      startGame();
     });
 
     startBtn.addEventListener("click", () => {
@@ -946,6 +1264,7 @@
     });
 
     loadSprites();
+    initStars();
     render();
   </script>
 </body>
